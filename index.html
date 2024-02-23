@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exercício do Alien - Nataly Cunha</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <style> body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }</style>
+    <link rel="icon" type="image/x-icon" href="/assets/alienigena.png">
+</head> <!-- Acima são definidas as configurações do site web, como o seu título, estilização do seu conteúdo com css (tag style), ícone, além da importação do framework Phaser através de um endereço web (tag <src>) -->
+
+<body>
+    <script>
+        // Aqui são criadas 2 variáveis para altura e largura do jogo a serem utilizadas ao longo do código. Elas definidas como constantes pois justamente não devem ser alteradas ao longo do jogo
+        const larguraJogo = 700;
+        const alturaJogo = 850;
+
+        // Dentro da variável também constante config, são definidas as configurações do jogo Phaser e das funções que compoem cada cena
+        const config = {
+            type: Phaser.AUTO,
+            width: larguraJogo, // Define-se a largura do jogo chamando a variável criada acima, e o mesmo acontece sobre a altura
+            height: alturaJogo,
+
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 300},
+                    debug: true
+                }
+            }, // Physics definem as ações dinâmicas do jogo, e gravity especificamente adiciona um efeito de gravidade quando o alien desce na tela. "Debug" também é acionada através do valor true, pois ajuda a visualizar os limites e colisões entre os objetos
+
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            } // Declaração das funções que compoem cada cena do jogo, sendo elas: preload, create e update
+        };
+
+        // Uma nova instância de jogo Phaser, seguindo as configurações definidas em config, são guardadas dentro de uma variável constante chamada "game". Abaixo, são declaradas outras variáveis que guardarão valores importantes para o jogo
+        const game = new Phaser.Game(config);    
+        var alien;
+        var fogo;
+        var pontuacao = 0;
+        var placar;
+   
+        var obstaculos = { // Lista onde são colocados todos os obstáculos que, no caso, são a plataforma e uma bomba. Eles ficam com valor null pois ainda vou atribuir valores mais para frente
+            bomba: null,
+            plataforma: null
+        };
+
+
+        function preload() {
+
+            //Carregamento de todas as imagens a serem adicionadas em create
+            this.load.image('background', 'assets/bg.png');
+            this.load.image('player', 'assets/alienigena.png');
+            this.load.image('turbo_nave', 'assets/turbo.png');
+            this.load.image('plataforma_tijolo', 'assets/tijolos.png');
+            this.load.image('moeda', 'assets/moeda.png');
+            this.load.image('bomba', 'assets/pikisuperstar_no_freepik.png');
+        }
+
+        function create() {
+            // A metade dos valores de larguraJogo e alturaJogo são 'instaladas' com a key 'background', para que a imagem de fundo seja centralizada
+            this.add.image(larguraJogo/2, alturaJogo/2, 'background');
+
+            // Turbo é adicionado como uma variável 'fogo' declarada antes do alien, para aparecer na camada inferior
+            fogo = this.add.sprite(0, 0, 'turbo_nave');
+
+            // Adição do sprite do alien na tela, com a key 'player' e a posição inicial dele no centro da tela
+            alien = this.physics.add.sprite(larguraJogo/2, 0, 'player');
+
+            // Adição de colisão entre o alien e os limites do frame do jogo
+            alien.setCollideWorldBounds(true);
+
+            // o teclado é definido como entrada de dados 
+            teclado = this.input.keyboard.createCursorKeys();
+
+            // por enquanto, o fogo fica invisível pois ele só será acionado com uma condição mais para frente
+            fogo.setVisible(false);
+            
+            // adição da plataforma a partir da lista de obstáculos
+            obstaculos.plataforma = this.physics.add.staticImage(larguraJogo/2, alturaJogo/2, 'plataforma_tijolo');
+            
+            // Adição de colisão entre o alien e a plataforma
+            this.physics.add.collider(alien, obstaculos.plataforma);
+
+            moeda = this.physics.add.sprite(larguraJogo/4, 0, 'moeda'); // cria a moeda e define a posição inicial dela, é importante que seja diferente da do alien, do contrário o placar sempre vai começar somado +1
+
+            moeda.setCollideWorldBounds(true); // garante a colisão, para que a moeda não atravesse os limites do jogo
+
+            moeda.setBounce(0.7); // moeda vai ter um efeito de bounce ao tocar nos objetos
+
+            this.physics.add.collider(moeda, obstaculos.plataforma); // define uma colisão entre a moeda e a plataforma
+
+            //  implementando o placar, ainda sem atualização do valor
+            placar = this.add.text(50, 50, 'Moedas: ' + pontuacao, {fontSize:'35px', fill:'#495613'});
+
+
+            // Abaixo ficam os eventos para quando o alien encostar (validação disso ocorre com a adição de overlap) na moeda
+            this.physics.add.overlap(alien, moeda, function (){ 
+
+                moeda.setVisible(false); // moeda fica invisível
+
+                var posicaoMoeda_Y = Phaser.Math.RND.between(50, 650); // número é sorteado
+
+                moeda.setPosition(posicaoMoeda_Y, 100); // configura nova posição da moeda para a posição do número sorteado acima
+
+                pontuacao += 1; // soma pontuação
+
+                placar.setText('Moedas: ' + pontuacao); // atualiza o placar
+
+                moeda.setVisible(true); // faz aparecer a moeda na posição do número sorteado
+            });
+
+            // Adição de novo objeto a partir da lista de obstáculos: bomba
+            obstaculos.bomba = this.physics.add.staticImage(larguraJogo/5, alturaJogo - 150, 'bomba');
+            
+            this.physics.add.collider(alien, obstaculos.bomba); // define uma colisão entre o alien e a bomba
+            
+            this.physics.add.collider(moeda, obstaculos.bomba); // define uma colisão entre a moeda e a bomba
+
+        }
+
+        function update() {
+
+            if (teclado.left.isDown) {
+                alien.setVelocityX(-150); // configuração para que seja definida um sentido de deslocamento do alien para a a esquerda quando a tecla esquerda for clicada
+            }
+
+            
+            else if (teclado.right.isDown) {
+                alien.setVelocityX(150); // configuração para que seja definida um sentido de deslocamento do alien para a a direita quando a tecla direita for clicada
+            }
+
+            
+            else {
+                alien.setVelocityX(0); // se não houver tecla clicada, o alien permanece em repouso
+            }
+
+
+            if (teclado.up.isDown) {
+                alien.setVelocityY(-150); // configuração para que seja definida um sentido de deslocamento do alien quando a tecla para cima é clicada. está com valor negativo pois, ao imaginar a tela como um plano cartesiano, o sentido "para cima" fica no sentido negativo de Y
+                
+                ativarTurbo(); // chamada da função para fazer aparecer o foguinho do turbo caso o alien esteja indo para cima
+            }
+            else {
+                semTurbo(); // chamada da função para desaparecer o foguinho do turbo caso o alien esteja indo para baixo
+
+            }
+
+            fogo.setPosition(alien.x, alien.y + alien.height/2); // define posição do fogo
+
+            function ativarTurbo() {
+                fogo.setVisible(true); // função para fazer aparecer o foguinho do turbo
+            }
+
+            function semTurbo() {
+                fogo.setVisible(false); // função para fazer desaparecer o foguinho do turbo
+            }
+        }
+    </script>
+</body>
+</html>
